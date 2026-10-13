@@ -1,0 +1,7 @@
+Metadata-Version: 2.4
+Name: berryq4lutf2f
+Version: 0.1.0
+Summary: BerryQ4LUTF2F native + Python quantization library
+Requires-Python: >=3.9
+Dynamic: requires-python
+Dynamic: summary

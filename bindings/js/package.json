@@ -1,0 +1,13 @@
+{
+  "name": "berrybits-native",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Direct Node.js FFI bindings for the Berryfour C ABI",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test.js"
+  },
+  "dependencies": {
+    "koffi": "^3.3.3"
+  }
+}

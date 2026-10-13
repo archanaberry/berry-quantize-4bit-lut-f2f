@@ -1,0 +1,45 @@
+#version 430
+
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+layout(std430, binding = 0) readonly buffer PackedWeights { uint words[]; } packed;
+layout(std430, binding = 1) readonly buffer BlockScales { float values[]; } scales;
+layout(std430, binding = 2) readonly buffer Codebook { float values[]; } lut;
+layout(std430, binding = 3) readonly buffer InputVector { float values[]; } input_vector;
+layout(std430, binding = 4) writeonly buffer OutputVector { float values[]; } output_vector;
+
+uniform uint rows;
+uniform uint cols;
+uniform uint blocks_per_row;
+
+uint load_packed_byte(uint byte_offset) {
+    uint word = packed.words[byte_offset >> 2u];
+    return (word >> ((byte_offset & 3u) * 8u)) & 255u;
+}
+
+void main() {
+    uint row = gl_GlobalInvocationID.x;
+    if (row >= rows) return;
+
+    uint packed_row_bytes = (cols + 1u) / 2u;
+    uint row_packed_offset = row * packed_row_bytes;
+    uint row_scale_offset = row * blocks_per_row;
+    vec4 accumulators = vec4(0.0);
+
+    for (uint block = 0; block < blocks_per_row; ++block) {
+        uint block_start = block * 32u;
+        uint block_end = min(block_start + 32u, cols);
+        float scale = scales.values[row_scale_offset + block];
+        float scaled_lut[16];
+        for (uint i = 0; i < 16u; ++i) scaled_lut[i] = lut.values[i] * scale;
+
+        for (uint column = block_start; column < block_end; ++column) {
+            uint byte_value = load_packed_byte(row_packed_offset + column / 2u);
+            uint code = ((column & 1u) != 0u) ? (byte_value >> 4u) : (byte_value & 15u);
+            accumulators[column & 3u] += scaled_lut[code] * input_vector.values[column];
+        }
+    }
+
+    output_vector.values[row] = (accumulators.x + accumulators.y) +
+                                (accumulators.z + accumulators.w);
+}
